@@ -1,15 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.IO.Ports;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Bai7
 {
@@ -20,7 +10,9 @@ namespace Bai7
             InitializeComponent();
             cboArea.DropDownStyle = ComboBoxStyle.DropDownList;
         }
-        
+        int soCu;
+        int soMoi;
+
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (cboArea.SelectedIndex == 0)
@@ -33,39 +25,59 @@ namespace Bai7
 
         private void txtSoCu_TextChanged(object sender, EventArgs e)
         {
-            CheckInvalidValue(txtSoCu.Text, txtSoCu);
+            if (CheckInvalidValue(txtSoCu, errSoCu))
+            {
+                // Nếu giá trị của txtSoCu là 1 số nguyên hợp lệ, cập nhật biến soCu
+                if (int.TryParse(txtSoCu.Text, out int value))
+                {
+                    soCu = value;
+                    CheckSoMoi();
+                }
+            }
         }
 
         private void txtSoMoi_TextChanged(object sender, EventArgs e)
         {
-            CheckInvalidValue(txtSoMoi.Text, txtSoMoi);
-
-            // Lỗi: nếu như 1 trong 2 cái đúng thì errorprovider sẽ bị clear
-            //if (Regex.IsMatch(txtSoMoi.Text, @"^[0-9]*(\.[0-9]+)?$") && Regex.IsMatch(txtSoCu.Text, @"^[0-9]*(\.[0-9]+)?$") && (txtSoMoi.Text.Trim().Length > 0))
-            //{
-            //    soCu = Convert.ToInt32(txtSoCu.Text);
-            //    soMoi = Convert.ToInt32(txtSoMoi.Text);
-            //    if (soCu > soMoi)
-            //        errorProvider1.SetError(txtSoMoi, "Số mới phải lớn hoặc bằng hơn số cũ");
-            //    else
-            //        errorProvider1.Clear();
-            //}
+            if (CheckInvalidValue(txtSoMoi, errSoMoi))
+            {
+                // Nếu giá trị của txtSoMoi là 1 số nguyên hợp lệ, cập nhật biến soMoi
+                if (int.TryParse(txtSoMoi.Text, out int value))
+                {
+                    soMoi = value;
+                    CheckSoMoi();
+                }
+            }
         }
 
-        private void CheckInvalidValue(string text, TextBox textBox)
+        private void CheckSoMoi()
         {
-            bool isValid = Regex.IsMatch(text, @"^[0-9]*(\.[0-9]+)?$") && (text.Trim().Length > 0);
-            if (!isValid)
-                errorProvider1.SetError(textBox, "Giá trị không hợp lệ");
+            if (soCu > soMoi)
+                errSoMoi.SetError(txtSoMoi, "Số mới phải lớn hơn số cũ");
             else
-                errorProvider1.Clear();
+                errSoMoi.Clear();
+        }
+
+        private bool CheckInvalidValue(TextBox txt, ErrorProvider err)
+        {
+            if (!int.TryParse(txt.Text, out int value) && (txt.Text.Trim().Length > 0))
+            {
+                err.SetError(txt, "Giá trị không hợp lệ");
+                return false;
+            }
+            else
+            {
+                err.Clear();
+                return true;
+            }
         }
 
         private void btnTinhTien_Click(object sender, EventArgs e)
         {
             TinhTien();
+
             if (txtName.Text != "" && txtSoCu.Text != "" && txtSoMoi.Text != "" && cboArea.SelectedIndex != -1)
                 AddToListView();
+
             TongTien();
         }
 
@@ -82,8 +94,7 @@ namespace Bai7
 
         private void AddToListView()
         {
-            ListViewItem lv = new ListViewItem();
-            lv.Text = txtName.Text;
+            ListViewItem lv = new ListViewItem(txtName.Text);
             lv.SubItems.Add(cboArea.SelectedItem.ToString());
             lv.SubItems.Add(txtDinhMuc.Text);
             lv.SubItems.Add(txtTieuThu.Text);
@@ -95,8 +106,6 @@ namespace Bai7
         {
             try
             {
-                int soCu = Convert.ToInt32(txtSoCu.Text);
-                int soMoi = Convert.ToInt32(txtSoMoi.Text);
                 int dinhMuc = Convert.ToInt32(txtDinhMuc.Text);
                 int tieuThu = soMoi - soCu;
                 txtTieuThu.Text = tieuThu.ToString();
@@ -111,21 +120,26 @@ namespace Bai7
 
         private void btnNhapMoi_Click(object sender, EventArgs e)
         {
-            txtName.Clear();
-            cboArea.SelectedIndex = -1;
-            txtDinhMuc.Clear();
-            txtSoCu.Clear();
-            txtSoMoi.Clear();
-            errorProvider1.Clear();
-            txtTieuThu.Clear();
-            txtThanhTien.Clear();
+            ClearControl(new Control[] { txtName, cboArea, txtDinhMuc, txtSoCu, txtSoMoi, txtTieuThu, txtThanhTien });
+            errSoCu.Clear();
             txtName.Focus();
+        }
+
+        private void ClearControl(Control[] controls)
+        {
+            foreach (Control ctrl in controls)
+            {
+                if (ctrl is TextBox txt)
+                    txt.Clear();
+                else if (ctrl is ComboBox cbo)
+                    cbo.SelectedIndex = -1;
+            }
         }
 
         private void btnThoat_Click(object sender, EventArgs e)
         {
             DialogResult result = MessageBox.Show("Xác nhận thoát?",
-                "Xác nhận", 
+                "Xác nhận",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
             if (result == DialogResult.Yes)
@@ -134,13 +148,35 @@ namespace Bai7
 
         private void btnXoa_Click(object sender, EventArgs e)
         {
-            while (listView1.SelectedItems.Count > 0)
-                listView1.Items.Remove(listView1.SelectedItems[0]);
+            if (listView1.SelectedItems.Count > 0)
+            {
+                while (listView1.SelectedItems.Count > 0)
+                {
+                    ListViewItem lv = listView1.SelectedItems[0];
+                    int thanhTien = Convert.ToInt32(lv.SubItems[4].Text);
+                    int total = Convert.ToInt32(txtTotal.Text);
+                    txtTotal.Text = (total - thanhTien).ToString();
+                    listView1.Items.Remove(listView1.SelectedItems[0]);
+                }
+            }
         }
 
-        private void txtTotal_TextChanged(object sender, EventArgs e)
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            
+            if (e.KeyCode == Keys.Escape)
+            {
+                DialogResult result = MessageBox.Show("Xác nhận thoát?",
+                "Xác nhận",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+                if (result == DialogResult.Yes)
+                    Close();
+            }
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }
